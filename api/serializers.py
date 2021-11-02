@@ -1,17 +1,26 @@
 from rest_framework import serializers
-from .models import Group, Event
+from .models import Group, Event, UserProfile
+from rest_framework.authtoken.models import Token
 from django.contrib.auth.models import User
 
 class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
-        model = User
-        fields = ("id", "username", "image")
+        model = UserProfile
+        fields = ("image", "is_premium", "bio")
 
 class UserSerializer(serializers.ModelSerializer):
     profile = UserProfileSerializer()
     class Meta:
         model = User
-        fields = ("id", "username", "profile")
+        fields = ("id", "username", "email", "password", "profile")
+        extra_kwargs = {"password":{"write_only":True, "required":False}}
+
+    def create(self, validated_data):
+        profile_data = validated_data.pop("profile")
+        user = User.objects.create_user(**validated_data)
+        UserProfile.objects.create(user=user, **profile_data)
+        Token.objects.create(user=user)
+        return user
 
 
 class EventSerializer(serializers.ModelSerializer):

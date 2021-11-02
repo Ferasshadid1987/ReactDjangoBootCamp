@@ -8,6 +8,10 @@ from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.views import ObtainAuthToken
 # Create your views here.
 
+class UserViewsets(viewsets.ModelViewSet):
+    queryset= User.objects.all()
+    serializer_class = UserSerializer
+
 class UserProfileViewset(viewsets.ModelViewSet):
     queryset = UserProfile.objects.all()
     serializer_class = UserProfileSerializer

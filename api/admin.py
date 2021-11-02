@@ -5,8 +5,8 @@ from .models import  Group, Event, UserProfile
 @admin.register(UserProfile)
 
 class UserProfileAdmin(admin.ModelAdmin):
-    field =  ("user", "image")
-    list_display = ("id", "user", "image")
+    field =  ("user", "image", "is_premium", "bio")
+    list_display = ("id", "user", "image", "is_premium", "bio")
 
 @admin.register(Group)
 
