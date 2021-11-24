@@ -37,7 +37,7 @@ deactivate () {
 # unset irrelevant variables
 deactivate nondestructive
 
-VIRTUAL_ENV="C:\Users\USER\Github3\22.Day7-Django-Repeat\ReactDjangoBootCamp\env"
+VIRTUAL_ENV="C:\Users\USER\Github3\24.Day8-Django-Repeat\ReactDjangoBootCamp\env"
 export VIRTUAL_ENV
 
 _OLD_VIRTUAL_PATH="$PATH"
