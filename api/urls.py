@@ -8,6 +8,7 @@ from .views import CustomObtainAuthToken
 router = routers.DefaultRouter()
 router.register(r'groups', views.GroupViewsets)
 router.register(r'events', views.EventViewsets)
+router.register(r'members', views.MemberViewsets)
 router.register(r'users', views.UserViewsets)
 router.register(r'profile', views.UserProfileViewset)
 
