@@ -2,8 +2,10 @@ from django.shortcuts import render
 from django.contrib.auth.models import User
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
-from .models import Group, Event, UserProfile, Member, Comment
-from .serializers import GroupSerializer, EventSerializer, GroupFullSerializer, UserSerializer, UserProfileSerializer, ChangePasswordSerializer, MemberSerializer, CommentSerializer
+from datetime import datetime
+import pytz
+from .models import Group, Event, UserProfile, Member, Comment, Bet
+from .serializers import GroupSerializer, EventSerializer, GroupFullSerializer, UserSerializer, UserProfileSerializer, ChangePasswordSerializer, MemberSerializer, CommentSerializer, BetSerializer, EventFullSerializer
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.views import ObtainAuthToken
@@ -53,11 +55,53 @@ class GroupViewsets(viewsets.ModelViewSet):
         serializer = GroupFullSerializer(instance, many=False, context={"request":request})
         return Response(serializer.data)
 
-class EventViewsets(viewsets.ModelViewSet):
-        queryset = Event.objects.all()
-        serializer_class = EventSerializer
-        authentication_classes = (TokenAuthentication,)
-        permission_classes = (IsAuthenticated,)
+class EventViewset(viewsets.ModelViewSet):
+    queryset = Event.objects.all()
+    serializer_class = EventSerializer
+    authentication_classes = (TokenAuthentication,)
+    permission_classes = (IsAuthenticated,)
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = EventFullSerializer(instance, many=False, context={'request': request})
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['PUT'])
+    def set_result(self, request, pk):
+        event = self.get_object()
+        if 'score1' in request.data and 'score2' in request.data and event.time < datetime.now(pytz.UTC):
+            event.score1 = request.data['score1']
+            event.score2 = request.data['score2']
+            event.save()
+            self.calculate_points()
+            serializer = EventFullSerializer(event, context={'request': request})
+            return Response(serializer.data)
+        else:
+            response = {"message": "Wrong Params"}
+            return Response(response, status=status.HTTP_400_BAD_REQUEST)
+
+    def calculate_points(self):
+        event = self.get_object()
+        bets = event.bets.all()
+        for bet in bets:
+            user_points = 0
+
+            # 3pts for exact match
+            # 1:1 bet 1:1 = 3pts
+            # 1:1 bet 2:2 = 1pts
+            # 1:2 bet 1:2 = 3pts
+
+            if bet.score1 == event.score1 and bet.score2 == event.score2:
+                user_points = 3
+            else:
+                score_final = event.score1 - event.score2
+                bet_final = bet.score1 - bet.score2
+
+                if (score_final > 0 and bet_final > 0) or (score_final == 0 and bet_final == 0) or (score_final < 0 and bet_final < 0):
+                    user_points = 1
+
+            bet.points = user_points
+            bet.save()
 
 
 class MemberViewsets(viewsets.ModelViewSet):
@@ -103,6 +147,61 @@ class MemberViewsets(viewsets.ModelViewSet):
             else:
                 response = {"message": "Wrong Params"}
                 return Response(response, status=status.HTTP_400_BAD_REQUEST)
+
+class BetViewset(viewsets.ModelViewSet):
+    queryset = Bet.objects.all()
+    serializer_class = BetSerializer
+    authentication_classes = (TokenAuthentication,)
+    permission_classes = (IsAuthenticated,)
+
+    def create(self, request, *args, **kwargs):
+        response = {"message": "Method not allowed"}
+        return Response(response, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    def update(self, request, *args, **kwargs):
+        response = {"message": "Method not allowed"}
+        return Response(response, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    @action(detail=False, methods=['POST'], url_path='place_bet')
+    def place_bet(self, request):
+        if 'event' in request.data and 'score1' in request.data and 'score2' in request.data:
+            event_id = request.data['event']
+            event = Event.objects.get(id=event_id)
+
+            in_group = self.checkIfUserInGroup(event, request.user)
+
+            if event.time > datetime.now(pytz.UTC) and in_group:
+                score1 = request.data['score1']
+                score2 = request.data['score2']
+
+                try:
+                    # UPDATE scenario
+                    my_bet = Bet.objects.get(event=event_id, user=request.user.id)
+                    my_bet.score1 = score1
+                    my_bet.score2 = score2
+                    my_bet.save()
+                    serializer = BetSerializer(my_bet, many=False)
+                    response = {"message": "Bet Updated", "new": False, "result": serializer.data}
+                    return Response(response, status=status.HTTP_200_OK)
+                except:
+                    # CREATE scenario
+                    my_bet = Bet.objects.create(event=event, user=request.user, score1=score1, score2=score2)
+                    serializer = BetSerializer(my_bet, many=False)
+                    response = {"message": "Bet Created", "new": True, "result": serializer.data}
+                    return Response(response, status=status.HTTP_200_OK)
+            else:
+                response = {"message": "You can't place a bet. Too late!"}
+                return Response(response, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            response = {"message": "Wrong Params"}
+            return Response(response, status=status.HTTP_400_BAD_REQUEST)
+
+    def checkIfUserInGroup(self, event, user):
+        try:
+            return Member.objects.get(user=user, group=event.group)
+        except:
+            return False
+
 
 class CustomObtainAuthToken(ObtainAuthToken):
     def post(self, request, *args, **kwargs):
