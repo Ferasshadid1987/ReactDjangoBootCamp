@@ -2,8 +2,8 @@ from django.shortcuts import render
 from django.contrib.auth.models import User
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
-from .models import Group, Event, UserProfile, Member
-from .serializers import GroupSerializer, EventSerializer, GroupFullSerializer, UserSerializer, UserProfileSerializer, ChangePasswordSerializer, MemberSerializer
+from .models import Group, Event, UserProfile, Member, Comment
+from .serializers import GroupSerializer, EventSerializer, GroupFullSerializer, UserSerializer, UserProfileSerializer, ChangePasswordSerializer, MemberSerializer, CommentSerializer
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.views import ObtainAuthToken
@@ -33,6 +33,12 @@ class UserViewsets(viewsets.ModelViewSet):
 class UserProfileViewset(viewsets.ModelViewSet):
     queryset = UserProfile.objects.all()
     serializer_class = UserProfileSerializer
+    authentication_classes = (TokenAuthentication,)
+    permission_classes = (AllowAny,)
+
+class CommentViewset(viewsets.ModelViewSet):
+    queryset = Comment.objects.all()
+    serializer_class = CommentSerializer
     authentication_classes = (TokenAuthentication,)
     permission_classes = (AllowAny,)
 

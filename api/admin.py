@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import  Group, Event, UserProfile, Member
+from .models import  Group, Event, UserProfile, Member, Comment
 # Register your models here.
 
 @admin.register(UserProfile)
@@ -23,4 +23,9 @@ class EventAdmin(admin.ModelAdmin):
 class MemberAdmin(admin.ModelAdmin):
      field = ("user", "group", "admin")
      list_display = ("user", "group", "admin")
+
+@admin.register(Comment)
+class CommentAdmin(admin.ModelAdmin):
+     field = ("user", "group", "description")
+     list_display = ("user", "group", "description", "time")
 
